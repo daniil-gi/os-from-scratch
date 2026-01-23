@@ -1,0 +1,14 @@
+#!/bin/bash
+set -e
+
+as --32 bootloader.gas -o bootloader.o
+ld -m elf_i386 -Ttext 0x7C00 --oformat binary bootloader.o -o bootloader.bin
+truncate -s 512 bootloader.bin
+
+rustc --target i686-unknown-linux-gnu --emit obj -A warnings -C panic=abort -C opt-level=z -C relocation-model=static -C target-feature=-mmx,-sse src/lib.rs -o rust.o
+
+as --32 boot.gas -o boot.o
+ld -m elf_i386 -T kernel.ld boot.o rust.o -o kernel.bin
+
+cat bootloader.bin kernel.bin > os.img
+truncate -s 1440k os.img
