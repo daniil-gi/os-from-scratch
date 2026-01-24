@@ -1,1 +1,5 @@
-/target
+*.bin
+*.o
+*.a
+*.log
+*.elf
