@@ -40,9 +40,12 @@ fn to_ascii(code: u8) -> u8 {
     let parsed = match code {
         0x23 => b'H',
         0x12 => b'E',
-        0x26 => b'L',
         0x18 => b'O',
         0x2E => b'C',
+        0x26 => b'L',
+        0x1E => b'A',
+        0x13 => b'R',
+        0x1C => b'!',
         _ => b'?',
     };
     return parsed
@@ -50,41 +53,55 @@ fn to_ascii(code: u8) -> u8 {
 
 const PLACEHOLDER: &[u8] = b"PLACEHOLDER\n";
 const DEFAULT: &[u8] = b"Hello, World!\n";
-const INPUT: &[u8] = b"You typed: ";
-const ARRAY: &[u8] = b"Array: ";
-const FULL: &[u8] = b"The array is full!\n";
-const NEWLINE: &[u8] = b"\n"
+const INPUT: &[u8] = b"Input: ";
+const NEWLINE: &[u8] = b"\n";
+const INVALID: &[u8] = b"Invalid command\n";
 
 #[no_mangle]
 pub extern "C" fn rust() -> ! {
     let mut pos: usize = 0;
     pos = clear();
     pos = print(DEFAULT, pos);
-    let mut symbols = [0u8; 10];
+    let mut symbols = [0u8; 32];
     let mut i: usize = 0;
     loop {
         if { inb(0x64) } & 1 != 0 {
             let input = unsafe { inb(0x60) };
             let parsed = to_ascii(input);
-            if parsed != b'?' {
-                pos = print(INPUT, pos);
-                let temp = [parsed];
-                pos = print(&temp, pos);
-                pos = print(NEWLINE, pos);
+            if parsed != b'?' && parsed != b'!' {
                 if i < symbols.len() {
                     symbols[i] = parsed;
                     i += 1;
-                    pos = print(ARRAY, pos);
-                    for j in 0..10 {
+                    pos = print(INPUT, pos);
+                    for j in 0..i {
                         let msg = symbols[j];
                         pos = print(&[msg], pos);
                     }
                     let msg = [b'\n'];
                     pos = print(&msg, pos);
                 }
-                else {
-                    pos = print(FULL, pos);
+            }
+            if parsed == b'!' {
+                let mut is_clear = true;
+                let letters = b"CLEAR";
+                for j in 0..5 {
+                    if symbols[j] != letters[j] {
+                        is_clear = false;
+                        break;
+                    }
                 }
+                if is_clear {
+                    for j in 5..32 {
+                        if symbols[j] != 0 {
+                            is_clear = false;
+                            break;
+                        }
+                    }
+                }
+                if is_clear && i == 5 { pos = clear(); }
+                else { pos = print(INVALID, pos); }
+                for j in 0..32 { symbols[j] = 0; }
+                i = 0;
             }
         continue;
         }
