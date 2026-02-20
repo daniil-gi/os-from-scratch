@@ -36,8 +36,27 @@ fn inb(port: u16) -> u8 {
     return value
 }
 
+fn outb(port: u16, value: u8) {
+    unsafe {
+        asm!("out dx, al", in("dx") port, in("al") value);
+    }
+}
+
+fn outw(port: u16, value: u16) {
+    unsafe {
+        asm!("out dx, ax", in("dx") port, in("ax") value);
+    }
+}
+
 fn to_ascii(code: u8) -> u8 {
     let parsed = match code {
+        0x1F => b'S',
+        0x16 => b'U',
+        0x31 => b'N',
+        0x14 => b'T',
+        0x30 => b'B',
+        0x11 => b'W',
+        0x20 => b'D',
         0x23 => b'H',
         0x12 => b'E',
         0x18 => b'O',
@@ -45,6 +64,8 @@ fn to_ascii(code: u8) -> u8 {
         0x26 => b'L',
         0x1E => b'A',
         0x13 => b'R',
+        0x39 => b' ',
+        0x0E => b'~',
         0x1C => b'!',
         _ => b'?',
     };
@@ -57,28 +78,28 @@ const INPUT: &[u8] = b"Input: ";
 const NEWLINE: &[u8] = b"\n";
 const INVALID: &[u8] = b"Invalid command\n";
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn rust() -> ! {
     let mut pos: usize = 0;
     pos = clear();
     pos = print(DEFAULT, pos);
     let mut symbols = [0u8; 32];
+    let symbols = &mut symbols[..32];
     let mut i: usize = 0;
     loop {
         if { inb(0x64) } & 1 != 0 {
-            let input = unsafe { inb(0x60) };
+            let input = inb(0x60);
             let parsed = to_ascii(input);
-            if parsed != b'?' && parsed != b'!' {
+            if parsed != b'?' && parsed != b'!' && parsed != b'~' {
                 if i < symbols.len() {
-                    symbols[i] = parsed;
+                    unsafe { *symbols.get_unchecked_mut(i) = parsed; }
                     i += 1;
                     pos = print(INPUT, pos);
                     for j in 0..i {
                         let msg = symbols[j];
                         pos = print(&[msg], pos);
                     }
-                    let msg = [b'\n'];
-                    pos = print(&msg, pos);
+                    pos = print(NEWLINE, pos);
                 }
             }
             if parsed == b'!' {
@@ -90,18 +111,82 @@ pub extern "C" fn rust() -> ! {
                         break;
                     }
                 }
-                if is_clear {
-                    for j in 5..32 {
-                        if symbols[j] != 0 {
-                            is_clear = false;
-                            break;
-                        }
+                let mut is_echo_msg = true;
+                let letters = b"ECHO ";
+                for j in 0..5 {
+                    if symbols[j] != letters[j] {
+                        is_echo_msg = false;
+                        break;
                     }
                 }
-                if is_clear && i == 5 { pos = clear(); }
+                let mut is_echo_empty = true;
+                let letters = b"ECHO";
+                for j in 0..4 {
+                    if symbols[j] != letters[j] {
+                        is_echo_empty = false;
+                        break;
+                    }
+                }
+                let mut is_reboot = true;
+                let letters = b"REBOOT";
+                for j in 0..6 {
+                    if symbols[j] != letters[j] {
+                        is_reboot = false;
+                        break;
+                    }
+                }
+                let mut is_shutdown = true;
+                let letters = b"SHUTDOWN";
+                for j in 0..8 {
+                    if symbols[j] != letters[j] {
+                        is_shutdown = false;
+                        break;
+                    }
+                }
+                if is_clear {
+                    if i != 5 { is_clear = false; }
+                }
+                else if is_echo_msg {
+                    if i < 5 { is_echo_msg = false; }
+                }
+                else if is_echo_empty {
+                    if i != 4 { is_echo_empty = false; }
+                }
+                else if is_reboot {
+                    if i != 6 { is_reboot = false; }
+                }
+                else if is_shutdown {
+                    if i != 8 { is_shutdown = false; }
+                }
+                if is_clear { pos = clear(); }
+                else if is_echo_msg {
+                    pos = print(&symbols[5..i], pos);
+                    pos = print(NEWLINE, pos);
+                }
+                else if is_echo_empty {
+                    pos = print(DEFAULT, pos);
+                }
+                else if is_reboot {
+                    outb(0x64, 0xFE);
+                    loop {}
+                }
+                else if is_shutdown {
+                    outw(0x604, 0x2000);
+                    loop {}
+                }
                 else { pos = print(INVALID, pos); }
                 for j in 0..32 { symbols[j] = 0; }
                 i = 0;
+            }
+            if parsed == b'~' && i > 0 && i < symbols.len() {
+                i -= 1;
+                unsafe { *symbols.get_unchecked_mut(i) = 0; }
+                pos = print(INPUT, pos);
+                for j in 0..i {
+                    let msg = symbols[j];
+                    pos = print(&[msg], pos);
+                }
+                pos = print(NEWLINE, pos);
             }
         continue;
         }
@@ -112,3 +197,9 @@ pub extern "C" fn rust() -> ! {
 fn panic(_info: &PanicInfo) -> ! {
     loop {}
 }
+
+#[unsafe(no_mangle)]
+pub extern "C" fn PanicHandler() -> ! {
+    loop {}
+}
+

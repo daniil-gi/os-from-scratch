@@ -26,7 +26,7 @@ _start:
 
 err:
 	movb $0x0E, %ah
-	movb 0x'E', %al
+	movb $'E', %al
 	int $0x10
 	hlt
 

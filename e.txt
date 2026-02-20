@@ -1,0 +1,86 @@
+[daniil@archlinux ~]$ cd Programs/
+[daniil@archlinux Programs]$ cd Rust/
+[daniil@archlinux Rust]$ cd kernel_rust/
+[daniil@archlinux kernel_rust]$ sudo umount /dev/sdc* 2>/dev/null
+[sudo] password for daniil: 
+[daniil@archlinux kernel_rust]$ sudo parted /dev/sdc mklabel msdos
+[sudo] password for daniil: 
+Warning: The existing disk label on /dev/sdc will be destroyed and all data on this disk will be lost. Do you want to continue?
+Yes/No? yes                                                               
+Information: You may need to update /etc/fstab.
+
+[daniil@archlinux kernel_rust]$ sudo parted /dev/sdc mkpart primary fat32 1MiB 100%
+[sudo] password for daniil: 
+Information: You may need to update /etc/fstab.
+
+[daniil@archlinux kernel_rust]$ sudo mkfs.vfat -F32 /dev/sdc1             
+[sudo] password for daniil: 
+mkfs.fat 4.2 (2021-01-31)
+[daniil@archlinux kernel_rust]$ sudo mount /dev/sdc1 /mnt
+[sudo] password for daniil: 
+[daniil@archlinux kernel_rust]$ sudo grub-install --target=i386-pc --boot-directory=/mnt/boot /dev/sdc
+[sudo] password for daniil: 
+sudo: grub-install: command not found
+[daniil@archlinux kernel_rust]$ sudo grub-install
+[sudo] password for daniil: 
+sudo: grub-install: command not found
+[daniil@archlinux kernel_rust]$ sudo pacman -S grub-install
+[sudo] password for daniil: 
+error: target not found: grub-install
+[daniil@archlinux kernel_rust]$ sudo pacman -S grub
+[sudo] password for daniil: 
+resolving dependencies...
+looking for conflicting packages...
+
+Packages (1) grub-2:2.14-1
+
+Total Download Size:    7.59 MiB
+Total Installed Size:  41.49 MiB
+
+:: Proceed with installation? [Y/n] y
+:: Retrieving packages...
+ grub-2:2.14-1-x86_64                                                                                 7.6 MiB  16.6 MiB/s 00:00 [##############################################################################] 100%
+(1/1) checking keys in keyring                                                                                                  [##############################################################################] 100%
+(1/1) checking package integrity                                                                                                [##############################################################################] 100%
+(1/1) loading package files                                                                                                     [##############################################################################] 100%
+(1/1) checking for file conflicts                                                                                               [##############################################################################] 100%
+(1/1) checking available disk space                                                                                             [##############################################################################] 100%
+:: Processing package changes...
+(1/1) installing grub                                                                                                           [##############################################################################] 100%
+:: Install your bootloader and generate configuration with:
+     # grub-install ...
+     # grub-mkconfig -o /boot/grub/grub.cfg
+Optional dependencies for grub
+    dosfstools: For grub-mkrescue FAT FS and EFI support [installed]
+    efibootmgr: For grub-install EFI support [installed]
+    freetype2: For grub-mkfont usage [installed]
+    fuse3: For grub-mount usage [installed]
+    libisoburn: Provides xorriso for generating grub rescue iso using grub-mkrescue
+    libusb: For grub-emu USB support [installed]
+    lzop: For grub-mkrescue LZO support
+    mtools: For grub-mkrescue FAT FS support
+    os-prober: To detect other OSes when generating grub.cfg in BIOS systems
+    sdl: For grub-emu SDL support
+:: Running post-transaction hooks...
+(1/2) Arming ConditionNeedsUpdate...
+(2/2) Updating the info directory file...
+[daniil@archlinux kernel_rust]$ sudo grub-install --target=i386-pc --boot-directory=/mnt/boot /dev/sdc
+[sudo] password for daniil: 
+Installing for i386-pc platform.
+Installation finished. No error reported.
+[daniil@archlinux kernel_rust]$ sudo tee /mnt/boot/grub/grub.cfg << 'EOF'
+set timeout=0
+menuentry "My OS" {
+    linux16 /kernel.bin
+    boot
+}
+EOF
+[sudo] password for daniil: 
+set timeout=0
+menuentry "My OS" {
+    linux16 /kernel.bin
+    boot
+}
+[daniil@archlinux kernel_rust]$ sudo umount /mnt
+[sudo] password for daniil: 
+[daniil@archlinux kernel_rust]$ 
