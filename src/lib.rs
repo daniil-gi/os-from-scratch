@@ -64,6 +64,8 @@ fn to_ascii(code: u8) -> u8 {
         0x26 => b'L',
         0x1E => b'A',
         0x13 => b'R',
+        0x17 => b'I',
+        0x19 => b'P',
         0x39 => b' ',
         0x0E => b'~',
         0x1C => b'!',
@@ -78,6 +80,8 @@ const INPUT: &[u8] = b"Input: ";
 const NEWLINE: &[u8] = b"\n";
 const INVALID: &[u8] = b"Invalid command\n";
 
+const RAM_ADDRESS: *mut u8 = 0x1000000 as *mut u8;
+
 #[unsafe(no_mangle)]
 pub extern "C" fn rust() -> ! {
     let mut pos: usize = 0;
@@ -86,6 +90,7 @@ pub extern "C" fn rust() -> ! {
     let mut symbols = [0u8; 32];
     let symbols = &mut symbols[..32];
     let mut i: usize = 0;
+    let mut ram_file: usize = 0;
     loop {
         if { inb(0x64) } & 1 != 0 {
             let input = inb(0x60);
@@ -143,6 +148,30 @@ pub extern "C" fn rust() -> ! {
                         break;
                     }
                 }
+                let mut is_write = true;
+                let letters = b"WRITE ";
+                for j in 0..6 {
+                    if symbols[j] != letters[j] {
+                        is_write = false;
+                        break;
+                    }
+                }
+                let mut is_read = true;
+                let letters = b"READ";
+                for j in 0..4 {
+                    if symbols[j] != letters[j] {
+                        is_read = false;
+                        break;
+                    }
+                }
+                let mut is_append = true;
+                let letters = b"APPEND ";
+                for j in 0..7 {
+                    if symbols[j] != letters[j] {
+                        is_append = false;
+                        break;
+                    }
+                }
                 if is_clear {
                     if i != 5 { is_clear = false; }
                 }
@@ -157,6 +186,15 @@ pub extern "C" fn rust() -> ! {
                 }
                 else if is_shutdown {
                     if i != 8 { is_shutdown = false; }
+                }
+                else if is_write {
+                    if i <= 6 { is_write = false; }
+                }
+                else if is_read {
+                    if i != 4 { is_read = false; }
+                }
+                else if is_append {
+                    if i <= 8 { is_append = false; }
                 }
                 if is_clear { pos = clear(); }
                 else if is_echo_msg {
@@ -174,6 +212,44 @@ pub extern "C" fn rust() -> ! {
                     outw(0x604, 0x2000);
                     loop {}
                 }
+                else if is_write {
+                    let content = &symbols[6..i];
+                    ram_file = content.len();
+                    unsafe {
+                        for j in 0..ram_file {
+                            *RAM_ADDRESS.offset(j as isize) = content[j];
+                        }
+                    }
+                    pos = print(b"WROTE TO RAM\n", pos);
+                }
+                else if is_read {
+                    if ram_file == 0 {
+                        pos = print(b"EMPTY\n", pos);
+                    }
+                    else {
+                        unsafe {
+                            let data = core::slice::from_raw_parts(RAM_ADDRESS, ram_file);
+                            pos = print(data, pos);
+                            pos = print(NEWLINE, pos);
+                        }
+                    }
+                }
+                else if is_append {
+                    if ram_file == 0 {
+                        pos = print(b"EMPTY\n", pos);
+                    }
+                    else {
+                        let content = &symbols[8..i];
+                        let old_len = ram_file;
+                        ram_file += content.len();
+                        unsafe {
+                            for j in 0..content.len() {
+                                *RAM_ADDRESS.offset((old_len + j) as isize) = content[j];
+                            }
+                        }
+                        pos = print(b"APPENDED TO RAM\n", pos);
+                    }
+                }
                 else { pos = print(INVALID, pos); }
                 for j in 0..32 { symbols[j] = 0; }
                 i = 0;
@@ -188,7 +264,7 @@ pub extern "C" fn rust() -> ! {
                 }
                 pos = print(NEWLINE, pos);
             }
-        continue;
+            continue;
         }
     }
 }
@@ -202,4 +278,3 @@ fn panic(_info: &PanicInfo) -> ! {
 pub extern "C" fn PanicHandler() -> ! {
     loop {}
 }
-
