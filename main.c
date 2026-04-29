@@ -48,6 +48,9 @@ char toAscii(unsigned char code) {
         case 0x13: parsed = 'R'; break;
         case 0x17: parsed = 'I'; break;
         case 0x19: parsed = 'P'; break;
+        case 0x21: parsed = 'F'; break;
+        case 0x15: parsed = 'Y'; break;
+        case 0x32: parsed = 'M'; break;
         case 0x39: parsed = ' '; break;
         case 0x0E: parsed = '~'; break;
         case 0x1C: parsed = '!'; break;
@@ -70,10 +73,16 @@ volatile const char neverFuckingUsingCForThisFuckingKindOfFuckingShitEverFucking
 volatile const char* NEWLINE = &neverFuckingUsingCForThisFuckingKindOfFuckingShitEverFuckingAgainThisCharacterToPointerShitIsTooFuckingCrazyWhyICantJustDoItNormally;
 volatile const char* INVALID = "Invalid command\n";
 
+volatile const char* FUNNYEASTEREGG = "CPU Triple Fault GNU x86 GNU/LINUX DEBIAN UPDATE BIOS ERASE Crash (Your Disk And RAM Are Going To Explode in THIRTY SECONDS)\n";
+
 volatile const char* ECHOCMD = "ECHO ";
 volatile const char* CLEARCMD = "CLEAR";
+volatile const char* FUNNYCMD = "FUNNYMOMENT";
+
+void halt(void) { while (1) {} }
 
 void mainC(void) {
+    clear();
     printString(DEFAULT);
     char symbols[65] = {0};
     char actualCharacters = 0;
@@ -110,6 +119,7 @@ void mainC(void) {
                     for (unsigned char j = 0; j < 65; j++) { symbols[j] = 0; }
                     actualCharacters = 0;
                 }
+                else if (isEqual(symbols, FUNNYCMD)) { clear(); while (1) { printString(FUNNYEASTEREGG); } }
                 else {
                     printString(INVALID);
                     for (unsigned char j = 0; j < 65; j++) { symbols[j] = 0; }
