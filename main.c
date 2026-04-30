@@ -102,12 +102,14 @@ char toAscii(unsigned char code) {
 
 unsigned char isEqual(char* originMsg, char* comparisonMsg) {
     unsigned char validness = 1;
-    unsigned char msgLen = getStrLen(originMsg);
-    for (unsigned char i = 0; i < msgLen; i++) { if (originMsg[i] != comparisonMsg[i]) { validness = 0; } }
+    unsigned char originMsgLen = getStrLen(originMsg);
+    unsigned char comparisonMsgLen = getStrLen(comparisonMsg);
+    if (originMsgLen != comparisonMsgLen) { validness = 0; }
+    if (validness == 1) { for (unsigned char i = 0; i < originMsgLen; i++) { if (originMsg[i] != comparisonMsg[i]) { validness = 0; } } }
     return validness;
 }
 
-volatile const char* PLACEHOLDER = "PLACEHOLDER\n";
+volatile const char* PLACEHOLDER = "PLACEHOLDER (Something unexpected happened)\n";
 volatile const char* DEFAULT = "Hello, World!\n";
 volatile const char* INPUT = "Input: ";
 volatile const char neverFuckingUsingCForThisFuckingKindOfFuckingShitEverFuckingAgainThisCharacterToPointerShitIsTooFuckingCrazyWhyICantJustDoItNormally = '\n';
@@ -174,6 +176,7 @@ void mainC(void) {
                     actualCharacters = 0;
                 }
             }
+            else { printString(PLACEHOLDER); }
         }
     }
 }
