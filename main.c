@@ -62,7 +62,7 @@ unsigned char getStrLen(char* strArg) {
 
 void printChar(char* character) {
     if (*character == '\n') { cursor = cursor + (80 - cursor % 80); }
-    else { vga[cursor] = 0x0F00 | *(char*)character; cursor++; }
+    else { vga[cursor] = 0x0F00 | *character; cursor++; }
 }
 
 void printString(char* string) {
@@ -120,7 +120,7 @@ volatile const char* FUNNYEASTEREGG = "CPU Triple Fault GNU x86 GNU/LINUX DEBIAN
 
 volatile const char* ECHOCMD = "ECHO ";
 volatile const char* CLEARCMD = "CLEAR";
-volatile const char* FUNNYCMD = "FUNNYMOMENT";
+volatile const char* FUNNYCMD = "FUNNY MOMENT";
 
 unsigned char isEqualEcho(char* originMsg) {
     char firstFiveSymbols[6] = {0};
@@ -176,6 +176,7 @@ void mainC(void) {
                     actualCharacters = 0;
                 }
             }
+            else if (parsed == '?') {}
             else { printString(PLACEHOLDER); }
         }
     }
