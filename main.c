@@ -14,7 +14,6 @@
 
 volatile unsigned short cursor = 0;
 volatile unsigned short* vga = (unsigned short*)0xB8000;
-volatile char* RAM_ADDRESS = (char*)0x100000;
 
 // general/base functions
 
@@ -109,6 +108,16 @@ char toAscii(unsigned char code) {
         case 0x15: parsed = 'Y'; break;
         case 0x32: parsed = 'M'; break;
         case 0x2B: parsed = '\\'; break;
+        case 0x0B: parsed = '0'; break;
+        case 0x02: parsed = '1'; break;
+        case 0x03: parsed = '2'; break;
+        case 0x04: parsed = '3'; break;
+        case 0x05: parsed = '4'; break;
+        case 0x06: parsed = '5'; break;
+        case 0x07: parsed = '6'; break;
+        case 0x08: parsed = '7'; break;
+        case 0x09: parsed = '8'; break;
+        case 0x0A: parsed = '9'; break;
         case 0x39: parsed = ' '; break;
         case 0x0E: parsed = '~'; break;
         case 0x1C: parsed = '!'; break;
@@ -124,6 +133,24 @@ unsigned char isEqual(char* originMsg, char* comparisonMsg) {
     if (originMsgLen != comparisonMsgLen) { validness = 0; }
     if (validness == 1) { for (unsigned char i = 0; i < originMsgLen; i++) { if (originMsg[i] != comparisonMsg[i]) { validness = 0; } } }
     return validness;
+}
+
+char getFileDescriptorFromInput(char originChar) {
+    char fileDescriptor;
+    switch (originChar) {
+        case '0': fileDescriptor = 0; break;
+        case '1': fileDescriptor = 1; break;
+        case '2': fileDescriptor = 2; break;
+        case '3': fileDescriptor = 3; break;
+        case '4': fileDescriptor = 4; break;
+        case '5': fileDescriptor = 5; break;
+        case '6': fileDescriptor = 6; break;
+        case '7': fileDescriptor = 7; break;
+        case '8': fileDescriptor = 8; break;
+        case '9': fileDescriptor = 9; break;
+        default: fileDescriptor = -1; break;
+    }
+    return fileDescriptor;
 }
 
 // system messages
@@ -144,8 +171,6 @@ volatile const char* KERNELPANIC = "KERNEL PANIC ";
 
 volatile const char* CLEARCMD = "CLEAR";
 volatile const char* FUNNYCMD = "FUNNY MOMENT";
-volatile const char* READCMD = "READ";
-volatile const char* ERASECMD = "ERASE";
 volatile const char* SUICIDECMD = "SUICIDE";
 volatile const char* HALTCMD = "HALT";
 
@@ -153,6 +178,8 @@ volatile const char* HALTCMD = "HALT";
 
 volatile const char* ECHOCMD = "ECHO ";
 volatile const char* WRITECMD = "WRITE ";
+volatile const char* READCMD = "READ ";
+volatile const char* ERASECMD = "ERASE ";
 
 // less-important functions / descendants from base functions
 
@@ -180,14 +207,28 @@ unsigned char isEqualWrite(char* originMsg) {
     return validness;
 }
 
+unsigned char isEqualRead(char* originMsg) {
+    char firstFiveSymbols[6] = {0};
+    copyMemory(originMsg, &firstFiveSymbols, 5, CHARACTER);
+    unsigned char validness = isEqual(firstFiveSymbols, READCMD);
+    return validness;
+}
+
+unsigned char isEqualErase(char* originMsg) {
+    char firstSixSymbols[7] = {0};
+    copyMemory(originMsg, &firstSixSymbols, 6, CHARACTER);
+    unsigned char validness = isEqual(firstSixSymbols, ERASECMD);
+    return validness;
+}
+
 // main executable code
 
 void mainC(void) {
     clear();
     printString(DEFAULT);
     char symbols[65] = {0};
+    char files[9][255] = {0};
     char actualCharacters = 0;
-    unsigned short ramFile = 0;
     while (1) {
         if ((inb(0x64) & 1) != 0) {
             char input = inb(0x60);
@@ -221,25 +262,29 @@ void mainC(void) {
                     actualCharacters = 0;
                 }
                 else if (isEqual(symbols, FUNNYCMD)) { clear(); while (1) { printString(FUNNYEASTEREGG); } }
-                else if (isEqualWrite(symbols)) {
-                    for (unsigned short j = 0; j < (actualCharacters - 6); j++) {
-                        *(RAM_ADDRESS + ramFile) = symbols[j+6];
-                        ramFile += 1;
+                else if (isEqualWrite(symbols) && actualCharacters >= 7) {
+                    char fileDescriptor = getFileDescriptorFromInput(symbols[6]);
+                    if (fileDescriptor != -1 && symbols[7] == ' ') { 
+                        for (unsigned char j = 0; j < (actualCharacters - 8); j++) { files[fileDescriptor][j] = symbols[j+8]; }
                     }
+                    else { printString(INVALID); }
                     for (unsigned char j = 0; j < 65; j++) { symbols[j] = 0; }
                     actualCharacters = 0;
                 }
-                else if (isEqual(symbols, READCMD) && ramFile != 0) {
-                    for (unsigned char j = 0; j < ramFile; j++) { printChar(RAM_ADDRESS + j); }
+                else if (isEqualRead(symbols) && actualCharacters == 6) {
+                    char fileDescriptor = getFileDescriptorFromInput(symbols[5]);
+                    if (fileDescriptor != -1) { printString(files[fileDescriptor]); }
+                    else { printString(INVALID); }
                     for (unsigned char j = 0; j < 65; j++) { symbols[j] = 0; }
                     actualCharacters = 0;
                     printChar(NEWLINE);
                 }
-                else if (isEqual(symbols, ERASECMD) && ramFile != 0) {
-                    for (unsigned char j = 0; j < ramFile; j++) { *(RAM_ADDRESS + j) = 0; }
+                else if (isEqualErase(symbols) && actualCharacters == 7) {
+                    char fileDescriptor = getFileDescriptorFromInput(symbols[6]);
+                    if (fileDescriptor != -1) { for (unsigned char j = 0; j < 255; j++) { files[fileDescriptor][j] = 0; } }
+                    else { printString(INVALID); }
                     for (unsigned char j = 0; j < 65; j++) { symbols[j] = 0; }
                     actualCharacters = 0;
-                    ramFile = 0;
                 }
                 else if (isEqual(symbols, SUICIDECMD)) { suicide(); }
                 else if (isEqual(symbols, HALTCMD)) { halt(); }
