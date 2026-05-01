@@ -1,3 +1,5 @@
+// constant shortcuts
+
 #define CHARACTER 'c'
 #define SHORT 's'
 #define LONG 'l'
@@ -8,9 +10,15 @@
 #define LONGBYTES 4
 #define LONGLONGBYTES 8
 
+// functional constants
+
 volatile unsigned short cursor = 0;
 volatile unsigned short* vga = (unsigned short*)0xB8000;
 volatile char* RAM_ADDRESS = (char*)0x100000;
+
+// general/base functions
+
+void halt(void) { while (1) {} }
 
 void clear(void) { for (unsigned short i = 0; i < 2000; i++) { vga[i] = 0x0F20; } cursor = 0; }
 
@@ -50,6 +58,10 @@ void copyMemory(void* source, void* destination, unsigned char amountToCopy, uns
                 *target = *currentElement;
                 break;
             }
+            default:
+                long long* target = (long long*)((char*)destination + i * LONGLONGBYTES);
+                *target = 0;
+                break;
         }
     }
 }
@@ -92,6 +104,7 @@ char toAscii(unsigned char code) {
         case 0x21: parsed = 'F'; break;
         case 0x15: parsed = 'Y'; break;
         case 0x32: parsed = 'M'; break;
+        case 0x2B: parsed = '\\'; break;
         case 0x39: parsed = ' '; break;
         case 0x0E: parsed = '~'; break;
         case 0x1C: parsed = '!'; break;
@@ -109,6 +122,8 @@ unsigned char isEqual(char* originMsg, char* comparisonMsg) {
     return validness;
 }
 
+// system messages
+
 volatile const char* PLACEHOLDER = "PLACEHOLDER (Something unexpected happened)\n";
 volatile const char* DEFAULT = "Hello, World!\n";
 volatile const char* INPUT = "Input: ";
@@ -116,11 +131,36 @@ volatile const char neverFuckingUsingCForThisFuckingKindOfFuckingShitEverFucking
 volatile const char* NEWLINE = &neverFuckingUsingCForThisFuckingKindOfFuckingShitEverFuckingAgainThisCharacterToPointerShitIsTooFuckingCrazyWhyICantJustDoItNormally;
 volatile const char* INVALID = "Invalid command\n";
 
-volatile const char* FUNNYEASTEREGG = "CPU Triple Fault GNU x86 GNU/LINUX DEBIAN UPDATE BIOS ERASE Crash (Your Disk And RAM Are Going To Explode in THIRTY SECONDS)\n";
+// misc messages
 
-volatile const char* ECHOCMD = "ECHO ";
+volatile const char* FUNNYEASTEREGG = "CPU Triple Fault GNU x86 GNU/LINUX DEBIAN UPDATE BIOS ERASE Crash (Your Disk And RAM Are Going To Explode in THIRTY SECONDS)\n";
+volatile const char* KERNELPANIC = "KERNEL PANIC ";
+
+// commands without arguments
+
 volatile const char* CLEARCMD = "CLEAR";
 volatile const char* FUNNYCMD = "FUNNY MOMENT";
+volatile const char* READCMD = "READ";
+volatile const char* ERASECMD = "ERASE";
+volatile const char* SUICIDECMD = "SUICIDE";
+volatile const char* HALTCMD = "HALT";
+
+// commands with arguments
+
+volatile const char* ECHOCMD = "ECHO ";
+volatile const char* WRITECMD = "WRITE ";
+
+// less-important functions / descendants from base functions
+
+void suicide(void) {
+    while (1) {
+        char* ptr = 0;
+        cursor = 0;
+        for (unsigned char i = 0; i < 255; i++) { printString(KERNELPANIC); }
+        while (1) { for (unsigned long i = 0; i < 0x100000; i++) { *(ptr + i) = 0; } }
+        while (1) { halt(); }
+    }
+}
 
 unsigned char isEqualEcho(char* originMsg) {
     char firstFiveSymbols[6] = {0};
@@ -129,7 +169,14 @@ unsigned char isEqualEcho(char* originMsg) {
     return validness;
 }
 
-void halt(void) { while (1) {} }
+unsigned char isEqualWrite(char* originMsg) {
+    char firstSixSymbols[7] = {0};
+    copyMemory(originMsg, &firstSixSymbols, 6, CHARACTER);
+    unsigned char validness = isEqual(firstSixSymbols, WRITECMD);
+    return validness;
+}
+
+// main executable code
 
 void mainC(void) {
     clear();
@@ -170,6 +217,28 @@ void mainC(void) {
                     actualCharacters = 0;
                 }
                 else if (isEqual(symbols, FUNNYCMD)) { clear(); while (1) { printString(FUNNYEASTEREGG); } }
+                else if (isEqualWrite(symbols)) {
+                    for (unsigned short j = 0; j < (actualCharacters - 6); j++) {
+                        *(RAM_ADDRESS + ramFile) = symbols[j+6];
+                        ramFile += 1;
+                    }
+                    for (unsigned char j = 0; j < 65; j++) { symbols[j] = 0; }
+                    actualCharacters = 0;
+                }
+                else if (isEqual(symbols, READCMD) && ramFile != 0) {
+                    for (unsigned char j = 0; j < ramFile; j++) { printChar(RAM_ADDRESS + j); }
+                    for (unsigned char j = 0; j < 65; j++) { symbols[j] = 0; }
+                    actualCharacters = 0;
+                    printChar(NEWLINE);
+                }
+                else if (isEqual(symbols, ERASECMD) && ramFile != 0) {
+                    for (unsigned char j = 0; j < ramFile; j++) { *(RAM_ADDRESS + j) = 0; }
+                    for (unsigned char j = 0; j < 65; j++) { symbols[j] = 0; }
+                    actualCharacters = 0;
+                    ramFile = 0;
+                }
+                else if (isEqual(symbols, SUICIDECMD)) { suicide(); }
+                else if (isEqual(symbols, HALTCMD)) { halt(); }
                 else {
                     printString(INVALID);
                     for (unsigned char j = 0; j < 65; j++) { symbols[j] = 0; }
