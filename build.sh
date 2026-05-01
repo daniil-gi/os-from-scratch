@@ -5,9 +5,7 @@ as --32 bootloader.S -o bootloader.o
 ld -m elf_i386 -Ttext 0x7C00 --oformat binary bootloader.o -o bootloader.bin
 truncate -s 512 bootloader.bin
 
-gcc -m32 -ffreestanding -nostdlib -fno-pic -fno-stack-protector -mno-red-zone -mno-sse \
-    -Wno-discarded-qualifiers \
-    -c main.c -o main.o
+gcc -m32 -ffreestanding -nostdlib -fno-pic -fno-stack-protector -mno-red-zone -mno-sse -Wno-discarded-qualifiers -c main.c -o main.o
 
 as --32 boot.S -o boot.o
 

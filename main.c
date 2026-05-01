@@ -14,6 +14,7 @@
 
 volatile unsigned short cursor = 0;
 volatile unsigned short* vga = (unsigned short*)0xB8000;
+volatile char* MALLOC_ADDRESS = (char*)0x100000;
 
 // general/base functions
 
@@ -30,8 +31,10 @@ char inb(unsigned short port) {
 void outb(unsigned short port, unsigned char value) { __asm__ volatile ("outb %0, %1" : : "a"(value), "Nd"(port)); }
 void outw(unsigned short port, unsigned short value) { __asm__ volatile ("outw %0, %1" : : "a"(value), "Nd"(port)); }
 
-void copyMemory(void* source, void* destination, unsigned char amountToCopy, unsigned char type) {
-    for (unsigned char i = 0; i < amountToCopy; i++) {
+void* allocateMemory(unsigned long offset, unsigned short value) { char* ptr = (char*)(MALLOC_ADDRESS + offset); *ptr = value; return ptr; }
+
+void copyMemory(void* source, void* destination, unsigned long amountToCopy, unsigned char type) {
+    for (unsigned long i = 0; i < amountToCopy; i++) {
         switch (type) {
             case CHARACTER: {
                 char* currentElement = (char*)((char*)source + i * CHARACTERBYTES);
@@ -65,9 +68,31 @@ void copyMemory(void* source, void* destination, unsigned char amountToCopy, uns
     }
 }
 
+void setMemory(void* value, void* destination, unsigned long amountToSet, char type) {
+    for (unsigned long i = 0; i < amountToSet; i++) {
+        switch (type) {
+            case CHARACTER:
+                *(char*)((char*)destination + i * CHARACTERBYTES) = *(char*)(value);
+                break;
+            case SHORT:
+                *(short*)((char*)destination + i * SHORTBYTES) = *(short*)(value);
+                break;
+            case LONG:
+                *(long*)((char*)destination + i * LONGBYTES) = *(long*)(value);
+                break;
+            case LONGLONG:
+                *(long long*)((char*)destination + i * LONGLONGBYTES) = *(long long*)(value);
+                break;
+            default:
+                *(char*)(destination + i) = 0;
+                break; 
+        }
+    }
+}
+
 unsigned char getStrLen(char* strArg) {
     unsigned char i = 0;
-    for (unsigned char j = 0; j < 255; j++) { if (*(strArg + j) != 0) { i += 1; } else { break; } }
+    for (unsigned long j = 0; j < 4294967295; j++) { if (*(strArg + j) != 0) { i += 1; } else { break; } }
     return i;
 }
 
@@ -227,7 +252,9 @@ void mainC(void) {
     clear();
     printString(DEFAULT);
     char symbols[65] = {0};
-    char files[9][255] = {0};
+    char files[9][1024];
+    char* tmpPtr = allocateMemory(0, 0);
+    setMemory(tmpPtr, files, 1024*9, CHARACTER);
     char actualCharacters = 0;
     while (1) {
         if ((inb(0x64) & 1) != 0) {
@@ -281,7 +308,7 @@ void mainC(void) {
                 }
                 else if (isEqualErase(symbols) && actualCharacters == 7) {
                     char fileDescriptor = getFileDescriptorFromInput(symbols[6]);
-                    if (fileDescriptor != -1) { for (unsigned char j = 0; j < 255; j++) { files[fileDescriptor][j] = 0; } }
+                    if (fileDescriptor != -1) { for (unsigned short j = 0; j < 1024; j++) { files[fileDescriptor][j] = 0; } }
                     else { printString(INVALID); }
                     for (unsigned char j = 0; j < 65; j++) { symbols[j] = 0; }
                     actualCharacters = 0;
