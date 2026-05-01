@@ -73,6 +73,10 @@ unsigned char getStrLen(char* strArg) {
 }
 
 void printChar(char* character) {
+    if (cursor == 2000) {
+        for (unsigned short i = 1920; i < 2000; i++) { vga[i] = 0x0F00; }
+        cursor = 1920;
+    }
     if (*character == '\n') { cursor = cursor + (80 - cursor % 80); }
     else { vga[cursor] = 0x0F00 | *character; cursor++; }
 }
