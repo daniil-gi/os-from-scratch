@@ -252,9 +252,9 @@ void mainC(void) {
     clear();
     printString(DEFAULT);
     char symbols[65] = {0};
-    char files[9][1024];
+    char files[10][1024];
     char* tmpPtr = allocateMemory(0, 0);
-    setMemory(tmpPtr, files, 1024*9, CHARACTER);
+    setMemory(tmpPtr, files, 1024*10, CHARACTER);
     char actualCharacters = 0;
     while (1) {
         if ((inb(0x64) & 1) != 0) {
