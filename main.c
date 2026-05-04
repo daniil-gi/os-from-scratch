@@ -96,6 +96,31 @@ unsigned char getStrLen(char* strArg) {
     return i;
 }
 
+void reverseArray(char* strArg, unsigned short length) {
+    unsigned short currentElement = 0;
+    unsigned short lastElement = length - 1;
+    while (currentElement < lastElement) {
+        char tmp = strArg[currentElement];
+        strArg[currentElement] = strArg[lastElement];
+        strArg[lastElement] = tmp;
+        currentElement += 1;
+        lastElement -= 1;
+    }
+}
+
+char* itoa(unsigned char intArg) {
+    static char completedString[255] = {0};
+    unsigned char counter = 0;
+    for (unsigned char j = 0; j < 255; j++) {
+        if (intArg / 10 == 0) { break; }
+        completedString[j] = intArg % 10 + 48;
+        intArg /= 10;
+        counter += 1;
+    }
+    reverseArray(completedString, counter);
+    return completedString;
+}
+
 void printChar(char* character) {
     if (cursor == 2000) {
         for (unsigned short i = 1920; i < 2000; i++) { vga[i] = 0x0F00; }
@@ -298,7 +323,7 @@ void mainC(void) {
                     for (unsigned char j = 0; j < 65; j++) { symbols[j] = 0; }
                     actualCharacters = 0;
                 }
-                else if (isEqualRead(symbols) && actualCharacters == 6) {
+                else if (isEqualRead(symbols) && actualCharacters >= 6) {
                     char fileDescriptor = getFileDescriptorFromInput(symbols[5]);
                     if (fileDescriptor != -1) { printString(files[fileDescriptor]); }
                     else { printString(INVALID); }
@@ -306,7 +331,7 @@ void mainC(void) {
                     actualCharacters = 0;
                     printChar(NEWLINE);
                 }
-                else if (isEqualErase(symbols) && actualCharacters == 7) {
+                else if (isEqualErase(symbols) && actualCharacters >= 7) {
                     char fileDescriptor = getFileDescriptorFromInput(symbols[6]);
                     if (fileDescriptor != -1) { for (unsigned short j = 0; j < 1024; j++) { files[fileDescriptor][j] = 0; } }
                     else { printString(INVALID); }

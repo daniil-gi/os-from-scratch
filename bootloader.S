@@ -12,7 +12,7 @@ _start:
 	movw $0x7C00, %sp
 	movb %dl, (boot)
 	movb $0x02, %ah
-	movb $10, %al
+	movb $32, %al
 	movw $0x0002, %cx
 	movb $0x00, %dh
 	movb (boot), %dl
