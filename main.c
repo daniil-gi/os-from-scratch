@@ -10,6 +10,13 @@
 #define LONGBYTES 4
 #define LONGLONGBYTES 8
 
+// custom types
+
+typedef enum : unsigned char {
+    true = 1,
+    false = 0
+} boolean;
+
 // functional constants
 
 volatile unsigned short cursor = 0;
@@ -183,13 +190,13 @@ char toAscii(unsigned char code) {
     return parsed;
 }
 
-unsigned char isEqual(char* originMsg, char* comparisonMsg) {
-    unsigned char validness = 1;
+boolean isEqual(char* originMsg, char* comparisonMsg) {
+    boolean isValid = true;
     unsigned char originMsgLen = getStrLen(originMsg);
     unsigned char comparisonMsgLen = getStrLen(comparisonMsg);
-    if (originMsgLen != comparisonMsgLen) { validness = 0; }
-    if (validness == 1) { for (unsigned char i = 0; i < originMsgLen; i++) { if (originMsg[i] != comparisonMsg[i]) { validness = 0; } } }
-    return validness;
+    if (originMsgLen != comparisonMsgLen) { isValid = false; }
+    if (isValid) { for (unsigned char i = 0; i < originMsgLen; i++) { if (originMsg[i] != comparisonMsg[i]) { isValid = false; } } }
+    return isValid;
 }
 
 char getFileDescriptorFromInput(char originChar) {
@@ -250,32 +257,32 @@ void suicide(void) {
     }
 }
 
-unsigned char isEqualEcho(char* originMsg) {
+boolean isEqualEcho(char* originMsg) {
     char firstFiveSymbols[6] = {0};
     copyMemory(originMsg, firstFiveSymbols, 5, CHARACTER);
-    unsigned char validness = isEqual(firstFiveSymbols, ECHOCMD);
-    return validness;
+    boolean isValid = isEqual(firstFiveSymbols, ECHOCMD);
+    return isValid;
 }
 
-unsigned char isEqualWrite(char* originMsg) {
+boolean isEqualWrite(char* originMsg) {
     char firstSixSymbols[7] = {0};
     copyMemory(originMsg, firstSixSymbols, 6, CHARACTER);
-    unsigned char validness = isEqual(firstSixSymbols, WRITECMD);
-    return validness;
+    boolean isValid = isEqual(firstSixSymbols, WRITECMD);
+    return isValid;
 }
 
-unsigned char isEqualRead(char* originMsg) {
+boolean isEqualRead(char* originMsg) {
     char firstFiveSymbols[6] = {0};
     copyMemory(originMsg, firstFiveSymbols, 5, CHARACTER);
-    unsigned char validness = isEqual(firstFiveSymbols, READCMD);
-    return validness;
+    boolean isValid = isEqual(firstFiveSymbols, READCMD);
+    return isValid;
 }
 
-unsigned char isEqualErase(char* originMsg) {
+boolean isEqualErase(char* originMsg) {
     char firstSixSymbols[7] = {0};
     copyMemory(originMsg, firstSixSymbols, 6, CHARACTER);
-    unsigned char validness = isEqual(firstSixSymbols, ERASECMD);
-    return validness;
+    boolean isValid = isEqual(firstSixSymbols, ERASECMD);
+    return isValid;
 }
 
 // main executable code
