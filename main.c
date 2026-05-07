@@ -16,7 +16,7 @@ volatile unsigned short cursor = 0;
 volatile unsigned short* vga = (unsigned short*)0xB8000;
 volatile char* MALLOC_ADDRESS = (char*)0x100000;
 
-// general/base functions
+// core/base functions
 
 void halt(void) { while (1) {} }
 
@@ -31,7 +31,15 @@ char inb(unsigned short port) {
 void outb(unsigned short port, unsigned char value) { __asm__ volatile ("outb %0, %1" : : "a"(value), "Nd"(port)); }
 void outw(unsigned short port, unsigned short value) { __asm__ volatile ("outw %0, %1" : : "a"(value), "Nd"(port)); }
 
-void* allocateMemory(unsigned long offset, unsigned short value) { char* ptr = (char*)(MALLOC_ADDRESS + offset); *ptr = value; return ptr; }
+void* allocateMemory(unsigned long bytes) {
+    static volatile unsigned long usedRAM = 0;
+    char* ptr = (MALLOC_ADDRESS + usedRAM);
+    for (unsigned long i = 0; i < bytes; i++) {
+        *(ptr + i) = 0;
+        usedRAM++;
+    }
+    return ptr;
+}
 
 void copyMemory(void* source, void* destination, unsigned long amountToCopy, unsigned char type) {
     for (unsigned long i = 0; i < amountToCopy; i++) {
@@ -91,34 +99,33 @@ void setMemory(void* value, void* destination, unsigned long amountToSet, char t
 }
 
 unsigned char getStrLen(char* strArg) {
-    unsigned char i = 0;
-    for (unsigned long j = 0; j < 4294967295; j++) { if (*(strArg + j) != 0) { i += 1; } else { break; } }
+    unsigned long i = 0;
+    for (unsigned long j = 0; j < 4294967295; j++) { if (*(strArg + j) != 0) { i++; } else { break; } }
     return i;
 }
 
-void reverseArray(char* strArg, unsigned short length) {
-    unsigned short currentElement = 0;
-    unsigned short lastElement = length - 1;
+void reverseArray(char* strArg, unsigned long length) {
+    unsigned long currentElement = 0;
+    unsigned long lastElement = length - 1;
     while (currentElement < lastElement) {
         char tmp = strArg[currentElement];
         strArg[currentElement] = strArg[lastElement];
         strArg[lastElement] = tmp;
-        currentElement += 1;
-        lastElement -= 1;
+        currentElement++;
+        lastElement--;
     }
 }
 
-char* itoa(unsigned char intArg) {
-    static char completedString[255] = {0};
+void itoa(unsigned long intArg, char* buffer) {
+    if (intArg == 0) { buffer[0] = '0'; return; }
     unsigned char counter = 0;
-    for (unsigned char j = 0; j < 255; j++) {
-        if (intArg / 10 == 0) { break; }
-        completedString[j] = intArg % 10 + 48;
+    for (unsigned long j = 0; j < 255; j++) {
+        if (intArg / 10 == 0 && intArg % 10 == 0 && intArg == 0) { break; }
+        buffer[j] = intArg % 10 + 48;
         intArg /= 10;
-        counter += 1;
+        counter++;
     }
-    reverseArray(completedString, counter);
-    return completedString;
+    reverseArray(buffer, counter);
 }
 
 void printChar(char* character) {
@@ -245,28 +252,28 @@ void suicide(void) {
 
 unsigned char isEqualEcho(char* originMsg) {
     char firstFiveSymbols[6] = {0};
-    copyMemory(originMsg, &firstFiveSymbols, 5, CHARACTER);
+    copyMemory(originMsg, firstFiveSymbols, 5, CHARACTER);
     unsigned char validness = isEqual(firstFiveSymbols, ECHOCMD);
     return validness;
 }
 
 unsigned char isEqualWrite(char* originMsg) {
     char firstSixSymbols[7] = {0};
-    copyMemory(originMsg, &firstSixSymbols, 6, CHARACTER);
+    copyMemory(originMsg, firstSixSymbols, 6, CHARACTER);
     unsigned char validness = isEqual(firstSixSymbols, WRITECMD);
     return validness;
 }
 
 unsigned char isEqualRead(char* originMsg) {
     char firstFiveSymbols[6] = {0};
-    copyMemory(originMsg, &firstFiveSymbols, 5, CHARACTER);
+    copyMemory(originMsg, firstFiveSymbols, 5, CHARACTER);
     unsigned char validness = isEqual(firstFiveSymbols, READCMD);
     return validness;
 }
 
 unsigned char isEqualErase(char* originMsg) {
     char firstSixSymbols[7] = {0};
-    copyMemory(originMsg, &firstSixSymbols, 6, CHARACTER);
+    copyMemory(originMsg, firstSixSymbols, 6, CHARACTER);
     unsigned char validness = isEqual(firstSixSymbols, ERASECMD);
     return validness;
 }
@@ -278,16 +285,17 @@ void mainC(void) {
     printString(DEFAULT);
     char symbols[65] = {0};
     char files[10][1024];
-    char* tmpPtr = allocateMemory(0, 0);
+    char buffer[255];
+    char* tmpPtr = allocateMemory(1);
     setMemory(tmpPtr, files, 1024*10, CHARACTER);
-    char actualCharacters = 0;
+    volatile char actualCharacters = 0;
     while (1) {
         if ((inb(0x64) & 1) != 0) {
             char input = inb(0x60);
             char parsed = toAscii(input);
             if (parsed != '~' && parsed != '!' && parsed != '?' && actualCharacters != 64) {
                 symbols[actualCharacters] = parsed;
-                actualCharacters += 1;
+                actualCharacters++;
                 printString(INPUT);
                 for (unsigned short j = 0; j < actualCharacters; j++) { printChar(&symbols[j]); }
                 printChar(NEWLINE);
@@ -295,7 +303,7 @@ void mainC(void) {
             else if (parsed == '~') {
                 if (actualCharacters != 0) {
                     symbols[actualCharacters] = 0;
-                    actualCharacters -= 1;
+                    actualCharacters--;
                     printString(INPUT);
                     for (unsigned short j = 0; j < actualCharacters; j++) { printChar(&symbols[j]); }
                     printChar(NEWLINE);
