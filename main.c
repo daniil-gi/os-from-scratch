@@ -17,9 +17,15 @@ typedef enum : unsigned char {
     false = 0
 } boolean;
 
+typedef struct {
+    unsigned long size;
+    void* ptr
+} memoryAddress;
+
 // functional constants
 
 volatile unsigned short cursor = 0;
+volatile unsigned long usedRAM = 0;
 volatile unsigned short* vga = (unsigned short*)0xB8000;
 volatile char* MALLOC_ADDRESS = (char*)0x100000;
 
@@ -38,14 +44,12 @@ char inb(unsigned short port) {
 void outb(unsigned short port, unsigned char value) { __asm__ volatile ("outb %0, %1" : : "a"(value), "Nd"(port)); }
 void outw(unsigned short port, unsigned short value) { __asm__ volatile ("outw %0, %1" : : "a"(value), "Nd"(port)); }
 
-void* allocateMemory(unsigned long bytes) {
-    static volatile unsigned long usedRAM = 0;
+memoryAddress allocateMemory(unsigned long bytes) {
     char* ptr = (MALLOC_ADDRESS + usedRAM);
-    for (unsigned long i = 0; i < bytes; i++) {
-        *(ptr + i) = 0;
-        usedRAM++;
-    }
-    return ptr;
+    memoryAddress construction = { ptr, bytes };
+    for (unsigned long i = 0; i < bytes; i++) { *((char*)ptr + i) = 0; }
+    usedRAM += bytes;
+    return construction;
 }
 
 void copyMemory(void* source, void* destination, unsigned long amountToCopy, unsigned char type) {
@@ -105,7 +109,7 @@ void setMemory(void* value, void* destination, unsigned long amountToSet, char t
     }
 }
 
-unsigned char getStrLen(char* strArg) {
+unsigned long getStrLen(char* strArg) {
     unsigned long i = 0;
     for (unsigned long j = 0; j < 4294967295; j++) { if (*(strArg + j) != 0) { i++; } else { break; } }
     return i;
@@ -293,8 +297,8 @@ void mainC(void) {
     char symbols[65] = {0};
     char files[10][1024];
     char buffer[255];
-    char* tmpPtr = allocateMemory(1);
-    setMemory(tmpPtr, files, 1024*10, CHARACTER);
+    memoryAddress tmp = allocateMemory(1);
+    setMemory(tmp.ptr, files, 1024*10, CHARACTER);
     volatile char actualCharacters = 0;
     while (1) {
         if ((inb(0x64) & 1) != 0) {
